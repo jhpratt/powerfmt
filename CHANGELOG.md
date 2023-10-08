@@ -1,0 +1,23 @@
+# Changelog
+
+All notable changes to the time project will be documented in this file.
+
+The format is based on [Keep a Changelog]. This project adheres to [Semantic Versioning].
+
+[keep a changelog]: https://keepachangelog.com/en/1.0.0/
+[semantic versioning]: https://semver.org/spec/v2.0.0.html
+
+---
+
+## 0.1.0 [2023-10-08]
+
+### Added
+
+- `buf::WriteBuffer`
+- `ext::FormatterExt`
+- `smart_display::SmartDisplay`
+- `smart_display::FormatterOptions`
+- `smart_display::Metadata`
+- `smart_display::ManySmartDisplay`
+- `smart_display::delegate`
+- `smart_display::private_metadata`

@@ -1,0 +1,118 @@
+name: Build
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: 0
+defaults:
+  run:
+    shell: bash
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+    paths-ignore:
+      - "**.md"
+      - LICENSE-Apache
+      - LICENSE-MIT
+      - .github/FUNDING.yml
+      - .editorconfig
+      - .gitignore
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "**/LICENSE-Apache"
+      - "**/LICENSE-MIT"
+      - .github/FUNDING.yml
+      - .editorconfig
+      - .gitignore
+
+jobs:
+  check-targets:
+    name: Type checking (${{ matrix.rust.name }})
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push'
+    strategy:
+      matrix:
+        rust:
+          - { version: "1.65.0", name: MSRV }
+          - { version: stable, name: stable }
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust.version }}
+
+      - name: Install cargo-hack
+        shell: bash
+        run: |
+          curl -LsSf https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-linux-gnu.tar.gz \
+          | tar xzf - -C ~/.cargo/bin
+
+      - name: Cache cargo output
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.rust.version }}
+
+      - name: Check feature powerset
+        run: |
+          cargo hack check \
+          -p powerfmt \
+          --no-dev-deps \
+          --feature-powerset \
+          --optional-deps \
+          --exclude-features default \
+          --exclude-all-features
+
+  fmt:
+    name: Formatting
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push'
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+        env:
+          RUSTFLAGS: --cfg bench
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork) || github.event_name == 'push'
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+
+      # - name: Cache cargo output
+      #   uses: Swatinem/rust-cache@v2
+
+      - name: Run clippy
+        run: |
+          cargo clippy \
+          --all-features \
+          --benches \
+          --tests \
+          -Zlints
+        env:
+          RUSTFLAGS: --cfg bench
