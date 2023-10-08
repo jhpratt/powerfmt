@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog]. This project adheres to [Semantic Ver
 
 ---
 
+## 0.1.1 [2023-10-08]
+
+### Fixed
+
+The docs.rs build has been fixed, as it failed to deploy for v0.1.0.
+
 ## 0.1.0 [2023-10-08]
 
 ### Added

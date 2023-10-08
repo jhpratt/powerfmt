@@ -1,6 +1,6 @@
 [package]
 name = "powerfmt"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jacob Pratt <jacob@jhpratt.dev>"]
 edition = "2021"
 rust-version = "1.65.0"
@@ -18,7 +18,7 @@ description = """
 [package.metadata.docs.rs]
 all-features = true
 targets = ["x86_64-unknown-linux-gnu"]
-rustdoc-args = ["--cfg __powerfmt_docs", "--generate-link-to-definition"]
+rustdoc-args = ["--cfg", "__powerfmt_docs", "--generate-link-to-definition"]
 
 [lints]
 workspace = true
