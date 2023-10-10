@@ -164,6 +164,7 @@ impl Debug for FormatterOptions {
 }
 
 impl Default for FormatterOptions {
+    #[inline]
     fn default() -> Self {
         Self {
             flags: 0,
@@ -177,12 +178,14 @@ impl Default for FormatterOptions {
 
 impl FormatterOptions {
     /// Sets the fill character to use whenever there is alignment.
+    #[inline]
     pub fn with_fill(&mut self, c: char) -> &mut Self {
         self.fill = c;
         self
     }
 
     /// Set whether the `+` flag is specified.
+    #[inline]
     pub fn with_sign_plus(&mut self, b: bool) -> &mut Self {
         if b {
             self.flags |= 1 << FlagBit::SignMinus as u8;
@@ -194,6 +197,7 @@ impl FormatterOptions {
     }
 
     /// Set whether the `-` flag is specified.
+    #[inline]
     pub fn with_sign_minus(&mut self, b: bool) -> &mut Self {
         if b {
             self.flags |= 1 << FlagBit::SignPlus as u8;
@@ -205,12 +209,14 @@ impl FormatterOptions {
     }
 
     /// Set the flag indicating what form of alignment is requested, if any.
+    #[inline]
     pub fn with_align(&mut self, align: Option<Alignment>) -> &mut Self {
         self.align = align;
         self
     }
 
     /// Set the optional integer width that the output should be.
+    #[inline]
     pub fn with_width(&mut self, width: Option<usize>) -> &mut Self {
         if let Some(width) = width {
             self.flags |= 1 << FlagBit::WidthIsInitialized as u8;
@@ -223,6 +229,7 @@ impl FormatterOptions {
 
     /// Set the optional precision for numeric types. Alternatively, the maximum width for string
     /// types.
+    #[inline]
     pub fn with_precision(&mut self, precision: Option<usize>) -> &mut Self {
         if let Some(precision) = precision {
             self.flags |= 1 << FlagBit::PrecisionIsInitialized as u8;
@@ -234,6 +241,7 @@ impl FormatterOptions {
     }
 
     /// Set whether the `#` flag is specified.
+    #[inline]
     pub fn with_alternate(&mut self, b: bool) -> &mut Self {
         if b {
             self.flags |= 1 << FlagBit::Alternate as u8;
@@ -244,6 +252,7 @@ impl FormatterOptions {
     }
 
     /// Set whether the `0` flag is specified.
+    #[inline]
     pub fn with_sign_aware_zero_pad(&mut self, b: bool) -> &mut Self {
         if b {
             self.flags |= 1 << FlagBit::SignAwareZeroPad as u8;
@@ -256,18 +265,21 @@ impl FormatterOptions {
 
 impl FormatterOptions {
     /// Character used as 'fill' whenever there is alignment.
+    #[inline]
     #[must_use]
     pub const fn fill(&self) -> char {
         self.fill
     }
 
     /// Flag indicating what form of alignment was requested.
+    #[inline]
     #[must_use]
     pub const fn align(&self) -> Option<Alignment> {
         self.align
     }
 
     /// Optionally specified integer width that the output should be.
+    #[inline]
     #[must_use]
     pub const fn width(&self) -> Option<usize> {
         if self.flags & (1 << FlagBit::WidthIsInitialized as u8) == 1 {
@@ -280,6 +292,7 @@ impl FormatterOptions {
 
     /// Optionally specified precision for numeric types. Alternatively, the maximum width for
     /// string types.
+    #[inline]
     #[must_use]
     pub const fn precision(&self) -> Option<usize> {
         if self.flags & (1 << FlagBit::PrecisionIsInitialized as u8) == 1 {
@@ -291,24 +304,28 @@ impl FormatterOptions {
     }
 
     /// Determines if the `+` flag was specified.
+    #[inline]
     #[must_use]
     pub const fn sign_plus(&self) -> bool {
         self.flags & (1 << FlagBit::SignPlus as u8) != 0
     }
 
     /// Determines if the `-` flag was specified.
+    #[inline]
     #[must_use]
     pub const fn sign_minus(&self) -> bool {
         self.flags & (1 << FlagBit::SignMinus as u8) != 0
     }
 
     /// Determines if the `#` flag was specified.
+    #[inline]
     #[must_use]
     pub const fn alternate(&self) -> bool {
         self.flags & (1 << FlagBit::Alternate as u8) != 0
     }
 
     /// Determines if the `0` flag was specified.
+    #[inline]
     #[must_use]
     pub const fn sign_aware_zero_pad(&self) -> bool {
         self.flags & (1 << FlagBit::SignAwareZeroPad as u8) != 0
@@ -330,6 +347,7 @@ impl From<&Formatter<'_>> for FormatterOptions {
 }
 
 impl From<&mut Formatter<'_>> for FormatterOptions {
+    #[inline]
     fn from(value: &mut Formatter<'_>) -> Self {
         (&*value).into()
     }
@@ -428,6 +446,7 @@ macro_rules! impl_for_tuple {
             $($t: SmartDisplay),*
         {
             #[allow(non_snake_case, unused_variables)]
+            #[inline]
             fn width(self, f: FormatterOptions) -> usize {
                 let ($($t,)*) = self;
                  0 $(+ Metadata::width_of($t, f))*

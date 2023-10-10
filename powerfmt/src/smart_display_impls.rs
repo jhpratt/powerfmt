@@ -22,10 +22,12 @@ use crate::smart_display::{FormatterOptions, Metadata, SmartDisplay};
 impl SmartDisplay for Infallible {
     type Metadata = Self;
 
+    #[inline]
     fn metadata(&self, _: FormatterOptions) -> Metadata<Self> {
         match *self {}
     }
 
+    #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> fmt::Result {
         match *self {}
     }
@@ -34,10 +36,12 @@ impl SmartDisplay for Infallible {
 impl SmartDisplay for bool {
     type Metadata = ();
 
+    #[inline]
     fn metadata(&self, _: FormatterOptions) -> Metadata<()> {
         Metadata::new(if *self { 4 } else { 5 }, ())
     }
 
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Display::fmt(self, f)
     }
@@ -46,6 +50,7 @@ impl SmartDisplay for bool {
 impl SmartDisplay for str {
     type Metadata = ();
 
+    #[inline]
     fn metadata(&self, f: FormatterOptions) -> Metadata<()> {
         Metadata::new(
             match f.precision() {
@@ -56,6 +61,7 @@ impl SmartDisplay for str {
         )
     }
 
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Display::fmt(self, f)
     }
@@ -65,10 +71,12 @@ impl SmartDisplay for str {
 impl SmartDisplay for String {
     type Metadata = ();
 
+    #[inline]
     fn metadata(&self, f: FormatterOptions) -> Metadata<()> {
         (**self).metadata(f)
     }
 
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Display::fmt(self, f)
     }
