@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog]. This project adheres to [Semantic Ver
 
 ---
 
+## 0.1.2 [2023-10-10]
+
+### Added
+
+- `SmartDisplay` is implemented for all integer types.
+
+### Changed
+
+- The minimum supported Rust version is now 1.67.0.
+
 ## 0.1.1 [2023-10-08]
 
 ### Fixed

@@ -239,3 +239,46 @@ where
         SmartDisplay::fmt(&**self, f)
     }
 }
+
+/// Implement [`SmartDisplay`] for unsigned integers.
+macro_rules! impl_uint {
+    ($($t:ty)*) => {$(
+        impl SmartDisplay for $t {
+            type Metadata = ();
+
+            fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self::Metadata> {
+                let width = self.checked_ilog10().map_or(1, |n| n as usize + 1);
+                Metadata::new(width, ())
+            }
+
+            #[inline]
+            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+                Display::fmt(self, f)
+            }
+        }
+    )*};
+}
+
+impl_uint![u8 u16 u32 u64 u128 usize];
+
+/// Implement [`SmartDisplay`] for signed integers.
+macro_rules! impl_int {
+    ($($t:ty)*) => {$(
+        impl SmartDisplay for $t {
+            type Metadata = ();
+
+            fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self::Metadata> {
+                let mut width = if *self < 0 { 1 } else { 0 };
+                width += self.unsigned_abs().checked_ilog10().map_or(1, |n| n as usize + 1);
+                Metadata::new(width, ())
+            }
+
+            #[inline]
+            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+                Display::fmt(self, f)
+            }
+        }
+    )*};
+}
+
+impl_int![i8 i16 i32 i64 i128 isize];
