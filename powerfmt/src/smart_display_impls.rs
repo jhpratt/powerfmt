@@ -74,7 +74,7 @@ impl SmartDisplay for String {
 
     #[inline]
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        (**self).metadata(f).borrow()
+        (**self).metadata(f).reuse()
     }
 
     #[inline]
@@ -93,8 +93,8 @@ where
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
         match *self {
-            Cow::Borrowed(ref b) => b.metadata(f).borrow(),
-            Cow::Owned(ref o) => o.metadata(f).borrow(),
+            Cow::Borrowed(ref b) => b.metadata(f).reuse(),
+            Cow::Owned(ref o) => o.metadata(f).reuse(),
         }
     }
 
@@ -110,7 +110,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        self.get_ref().metadata(f).borrow()
+        self.get_ref().metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -125,7 +125,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        (**self).metadata(f).borrow()
+        (**self).metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -140,7 +140,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        (**self).metadata(f).borrow()
+        (**self).metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -155,7 +155,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        (**self).metadata(f).borrow()
+        (**self).metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -170,7 +170,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        (**self).metadata(f).borrow()
+        (**self).metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -185,7 +185,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        self.0.metadata(f).borrow()
+        self.0.metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -201,7 +201,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        (**self).metadata(f).borrow()
+        (**self).metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -217,7 +217,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        (**self).metadata(f).borrow()
+        (**self).metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -233,7 +233,7 @@ where
     type Metadata = T::Metadata;
 
     fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
-        (**self).metadata(f).borrow()
+        (**self).metadata(f).reuse()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

@@ -45,7 +45,7 @@
 //!         let username = "jdoe".to_owned();
 //!
 //!         // Note that this must be kept in sync with the implementation of `fmt_with_metadata`.
-//!         let width = smart_display::width_of!(username, " (", legal_name, ")",);
+//!         let width = smart_display::padded_width_of!(username, " (", legal_name, ")",);
 //!
 //!         Metadata::new(
 //!             width,
@@ -62,10 +62,10 @@
 //!     fn fmt_with_metadata(
 //!         &self,
 //!         f: &mut fmt::Formatter<'_>,
-//!         metadata: &Metadata<Self>,
+//!         metadata: Metadata<Self>,
 //!     ) -> fmt::Result {
 //!         f.pad_with_width(
-//!             metadata.width(),
+//!             metadata.unpadded_width(),
 //!             format_args!("{} ({})", metadata.username, metadata.legal_name),
 //!         )
 //!     }
@@ -91,7 +91,7 @@ use core::ops::Deref;
 /// let beta = 1;
 /// let gamma = 100;
 ///
-/// let width = smart_display::width_of!(
+/// let width = smart_display::padded_width_of!(
 ///     alpha, // use the default options
 ///     beta => width(2), // use the specified options
 ///     gamma => width(2) sign_plus(true), // use multiple options
@@ -122,21 +122,21 @@ use core::ops::Deref;
 #[cfg(doc)]
 #[doc(hidden)] // Don't show at crate root.
 #[macro_export]
-macro_rules! width_of {
+macro_rules! padded_width_of {
     ($($t:tt)*) => {};
 }
 
 #[cfg(not(doc))]
 #[allow(missing_docs)] // This is done with `#[cfg(doc)]` to avoid showing the various rules.
 #[macro_export]
-macro_rules! width_of {
+macro_rules! __not_public_at_root__padded_width_of {
     // Base case
     (@inner [] [$($output:tt)+]) => { $($output)+ };
     (@inner [$e:expr $(, $($remaining:tt)*)?] [$($expansion:tt)+]) => {
-        $crate::width_of!(@inner [$($($remaining)*)?] [
+        $crate::smart_display::padded_width_of!(@inner [$($($remaining)*)?] [
             $($expansion)+ + $crate::smart_display::Metadata::padded_width_of(
                 &$e,
-                $crate::smart_display::width_of!(@options)
+                $crate::smart_display::padded_width_of!(@options)
             )
         ])
     };
@@ -144,10 +144,10 @@ macro_rules! width_of {
         [$e:expr => $($call:ident($call_expr:expr))+ $(, $($remaining:tt)*)?]
         [$($expansion:tt)+]
     ) => {
-        $crate::width_of!(@inner [$($($remaining)*)?] [
+        $crate::smart_display::padded_width_of!(@inner [$($($remaining)*)?] [
             $($expansion)+ + $crate::smart_display::Metadata::padded_width_of(
                 &$e,
-                *$crate::smart_display::width_of!(@options $($call($call_expr))+)
+                *$crate::smart_display::padded_width_of!(@options $($call($call_expr))+)
             )
         ])
     };
@@ -155,60 +155,65 @@ macro_rules! width_of {
     // Options base case
     (@options_inner [] [$($output:tt)+]) => { $($output)+ };
     (@options_inner [fill($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
-        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
             $($expansion)*.with_fill($e)
         ])
     };
     (@options_inner [sign_plus($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
-        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
             $($expansion)*.with_sign_plus($e)
         ])
     };
     (@options_inner [sign_minus($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
-        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
             $($expansion)*.with_sign_minus($e)
         ])
     };
     (@options_inner [align($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
-        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
             $($expansion)*.with_align(Some($e))
         ])
     };
     (@options_inner [width($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
-        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
             $($expansion)*.with_width(Some($e))
         ])
     };
     (@options_inner [precision($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
-        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
             $($expansion)*.with_precision(Some($e))
         ])
     };
     (@options_inner [alternate($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
-        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
             $($expansion)*.with_width($e)
         ])
     };
     (@options_inner [sign_aware_zero_pad($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
-        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
             $($expansion)*.with_sign_aware_zero_pad($e)
         ])
     };
     // Options entry point
     (@options $($e:tt)*) => {
-        $crate::smart_display::width_of!(@options_inner [$($e)*] [
+        $crate::smart_display::padded_width_of!(@options_inner [$($e)*] [
             $crate::smart_display::FormatterOptions::default()
         ])
     };
 
     // Entry point
     ($($t:tt)*) => {
-        $crate::smart_display::width_of!(
+        $crate::smart_display::padded_width_of!(
             @inner [$($t)*] [0]
         )
     };
 }
 
+#[cfg(not(doc))]
+pub use __not_public_at_root__padded_width_of as padded_width_of;
+#[cfg(doc)]
+#[doc(inline)] // Show in this module.
+pub use padded_width_of;
 /// Implement [`Display`] for a type by using its implementation of [`SmartDisplay`].
 ///
 /// This attribute is applied to the `SmartDisplay` implementation.
@@ -248,8 +253,6 @@ pub use powerfmt_macros::smart_display_delegate as delegate;
 /// ```
 #[cfg(feature = "macros")]
 pub use powerfmt_macros::smart_display_private_metadata as private_metadata;
-#[doc(inline)] // Show in this module.
-pub use width_of;
 
 #[derive(Debug)]
 enum FlagBit {
@@ -551,9 +554,9 @@ where
         }
     }
 
-    /// Change the type that the metadata is for. This is useful when implementing [`SmartDisplay`]
-    /// for a type that wraps another type. Both type's metadata type must be the same.
-    pub fn borrow<'b, U>(self) -> Metadata<'b, U>
+    /// Reuse the metadata for another type. This is useful when implementing [`SmartDisplay`] for a
+    /// type that wraps another type. Both type's metadata type must be the same.
+    pub fn reuse<'b, U>(self) -> Metadata<'b, U>
     where
         'a: 'b,
         U: SmartDisplay<Metadata = T::Metadata> + ?Sized,
@@ -676,7 +679,7 @@ pub trait SmartDisplay: Display {
     /// formatter.
     ///
     /// If the metadata is not needed, you should implement the `fmt` method instead.
-    fn fmt_with_metadata(&self, f: &mut Formatter<'_>, _metadata: &Metadata<'_, Self>) -> Result {
+    fn fmt_with_metadata(&self, f: &mut Formatter<'_>, _metadata: Metadata<'_, Self>) -> Result {
         SmartDisplay::fmt(self, f)
     }
 
@@ -687,6 +690,6 @@ pub trait SmartDisplay: Display {
     /// the `fmt_with_metadata` method instead.
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let metadata = self.metadata(f.into());
-        self.fmt_with_metadata(f, &metadata)
+        self.fmt_with_metadata(f, metadata)
     }
 }
