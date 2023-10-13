@@ -44,11 +44,8 @@
 //!         let legal_name = "John Doe".to_owned();
 //!         let username = "jdoe".to_owned();
 //!
-//!         // Note that this must be kept in sync with the implementation of `fmr_with_metadata`.
-//!         let width = Metadata::width_of_many(
-//!             (&username, " (", &legal_name, ")"),
-//!             FormatterOptions::default(),
-//!         );
+//!         // Note that this must be kept in sync with the implementation of `fmt_with_metadata`.
+//!         let width = smart_display::width_of!(username, " (", legal_name, ")",);
 //!
 //!         Metadata::new(
 //!             width,
@@ -82,6 +79,132 @@ use core::fmt::{Alignment, Debug, Display, Formatter, Result};
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::ops::Deref;
+
+/// Compute the width of multiple items while optionally declaring the options for each item.
+///
+/// ```rust
+/// # use powerfmt::smart_display;
+/// let alpha = 0;
+/// let beta = 1;
+/// let gamma = 100;
+///
+/// let width = smart_display::width_of!(
+///     alpha, // use the default options
+///     beta => width(2), // use the specified options
+///     gamma => width(2) sign_plus(true), // use multiple options
+/// );
+/// assert_eq!(width, 7);
+///
+/// let formatted = format!("{alpha}{beta:2}{gamma:+2}");
+/// assert_eq!(formatted.len(), width);
+/// ```
+///
+/// Supported options are:
+///
+/// Option                      | Method called
+/// ---                         | ---
+/// `fill(char)`                | [`FormatterOptions::with_fill`]
+/// `sign_plus(bool)`           | [`FormatterOptions::with_sign_plus`]
+/// `sign_minus(bool)`          | [`FormatterOptions::with_sign_minus`]
+/// `align(Alignment)`          | [`FormatterOptions::with_align`]
+/// `width(usize)`              | [`FormatterOptions::with_width`]
+/// `precision(usize)`          | [`FormatterOptions::with_precision`]
+/// `alternate(bool)`           | [`FormatterOptions::with_alternate`]
+/// `sign_aware_zero_pad(bool)` | [`FormatterOptions::with_sign_aware_zero_pad`]
+///
+/// If there are future additions to [`FormatterOptions`], they will be added to this macro as well.
+///
+/// Options may be provided in any order and will be called in the order they are provided. The
+/// ordering matters if providing both `sign_plus` and `sign_minus`.
+#[cfg(doc)]
+#[doc(hidden)] // Don't show at crate root.
+#[macro_export]
+macro_rules! width_of {
+    ($($t:tt)*) => {};
+}
+
+#[cfg(not(doc))]
+#[allow(missing_docs)] // This is done with `#[cfg(doc)]` to avoid showing the various rules.
+#[macro_export]
+macro_rules! width_of {
+    // Base case
+    (@inner [] [$($output:tt)+]) => { $($output)+ };
+    (@inner [$e:expr $(, $($remaining:tt)*)?] [$($expansion:tt)+]) => {
+        $crate::width_of!(@inner [$($($remaining)*)?] [
+            $($expansion)+ + $crate::smart_display::Metadata::width_of(
+                &$e,
+                $crate::smart_display::width_of!(@options)
+            )
+        ])
+    };
+    (@inner
+        [$e:expr => $($call:ident($call_expr:expr))+ $(, $($remaining:tt)*)?]
+        [$($expansion:tt)+]
+    ) => {
+        $crate::width_of!(@inner [$($($remaining)*)?] [
+            $($expansion)+ + $crate::smart_display::Metadata::width_of(
+                &$e,
+                *$crate::smart_display::width_of!(@options $($call($call_expr))+)
+            )
+        ])
+    };
+
+    // Options base case
+    (@options_inner [] [$($output:tt)+]) => { $($output)+ };
+    (@options_inner [fill($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
+        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+            $($expansion)*.with_fill($e)
+        ])
+    };
+    (@options_inner [sign_plus($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
+        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+            $($expansion)*.with_sign_plus($e)
+        ])
+    };
+    (@options_inner [sign_minus($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
+        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+            $($expansion)*.with_sign_minus($e)
+        ])
+    };
+    (@options_inner [align($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
+        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+            $($expansion)*.with_align(Some($e))
+        ])
+    };
+    (@options_inner [width($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
+        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+            $($expansion)*.with_width(Some($e))
+        ])
+    };
+    (@options_inner [precision($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
+        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+            $($expansion)*.with_precision(Some($e))
+        ])
+    };
+    (@options_inner [alternate($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
+        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+            $($expansion)*.with_width($e)
+        ])
+    };
+    (@options_inner [sign_aware_zero_pad($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
+        $crate::smart_display::width_of!(@options_inner [$($remaining)*] [
+            $($expansion)*.with_sign_aware_zero_pad($e)
+        ])
+    };
+    // Options entry point
+    (@options $($e:tt)*) => {
+        $crate::smart_display::width_of!(@options_inner [$($e)*] [
+            $crate::smart_display::FormatterOptions::default()
+        ])
+    };
+
+    // Entry point
+    ($($t:tt)*) => {
+        $crate::smart_display::width_of!(
+            @inner [$($t)*] [0]
+        )
+    };
+}
 
 /// Implement [`Display`] for a type by using its implementation of [`SmartDisplay`].
 ///
@@ -122,6 +245,8 @@ pub use powerfmt_macros::smart_display_delegate as delegate;
 /// ```
 #[cfg(feature = "macros")]
 pub use powerfmt_macros::smart_display_private_metadata as private_metadata;
+#[doc(inline)] // Show in this module.
+pub use width_of;
 
 #[derive(Debug)]
 enum FlagBit {
