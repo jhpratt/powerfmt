@@ -39,7 +39,7 @@
 //! impl SmartDisplay for User {
 //!     type Metadata = UserMetadata;
 //!
-//!     fn metadata(&self, _: FormatterOptions) -> Metadata<UserMetadata> {
+//!     fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self> {
 //!         // This could be obtained from a database, for example.
 //!         let legal_name = "John Doe".to_owned();
 //!         let username = "jdoe".to_owned();
@@ -49,6 +49,7 @@
 //!
 //!         Metadata::new(
 //!             width,
+//!             self,
 //!             UserMetadata {
 //!                 username,
 //!                 legal_name,
@@ -61,7 +62,7 @@
 //!     fn fmt_with_metadata(
 //!         &self,
 //!         f: &mut fmt::Formatter<'_>,
-//!         metadata: &Metadata<UserMetadata>,
+//!         metadata: &Metadata<Self>,
 //!     ) -> fmt::Result {
 //!         f.pad_with_width(
 //!             metadata.width(),
@@ -75,6 +76,8 @@
 //! assert_eq!(format!("{user:>20}"), "     jdoe (John Doe)");
 //! ```
 
+use core::cmp;
+use core::convert::Infallible;
 use core::fmt::{Alignment, Debug, Display, Formatter, Result};
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
@@ -131,7 +134,7 @@ macro_rules! width_of {
     (@inner [] [$($output:tt)+]) => { $($output)+ };
     (@inner [$e:expr $(, $($remaining:tt)*)?] [$($expansion:tt)+]) => {
         $crate::width_of!(@inner [$($($remaining)*)?] [
-            $($expansion)+ + $crate::smart_display::Metadata::width_of(
+            $($expansion)+ + $crate::smart_display::Metadata::padded_width_of(
                 &$e,
                 $crate::smart_display::width_of!(@options)
             )
@@ -142,7 +145,7 @@ macro_rules! width_of {
         [$($expansion:tt)+]
     ) => {
         $crate::width_of!(@inner [$($($remaining)*)?] [
-            $($expansion)+ + $crate::smart_display::Metadata::width_of(
+            $($expansion)+ + $crate::smart_display::Metadata::padded_width_of(
                 &$e,
                 *$crate::smart_display::width_of!(@options $($call($call_expr))+)
             )
@@ -216,7 +219,7 @@ macro_rules! width_of {
 /// #[smart_display::delegate]
 /// impl SmartDisplay for Foo {
 /// #   type Metadata = ();
-/// #   fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
+/// #   fn metadata(&self, f: FormatterOptions) -> Metadata<Self> {
 /// #       todo!()
 /// #   }
 ///     // ...
@@ -313,10 +316,10 @@ impl FormatterOptions {
     #[inline]
     pub fn with_sign_plus(&mut self, b: bool) -> &mut Self {
         if b {
-            self.flags |= 1 << FlagBit::SignMinus as u8;
-            self.flags &= !(1 << FlagBit::SignPlus as u8);
-        } else {
+            self.flags |= 1 << FlagBit::SignPlus as u8;
             self.flags &= !(1 << FlagBit::SignMinus as u8);
+        } else {
+            self.flags &= !(1 << FlagBit::SignPlus as u8);
         }
         self
     }
@@ -325,10 +328,10 @@ impl FormatterOptions {
     #[inline]
     pub fn with_sign_minus(&mut self, b: bool) -> &mut Self {
         if b {
-            self.flags |= 1 << FlagBit::SignPlus as u8;
-            self.flags &= !(1 << FlagBit::SignMinus as u8);
-        } else {
+            self.flags |= 1 << FlagBit::SignMinus as u8;
             self.flags &= !(1 << FlagBit::SignPlus as u8);
+        } else {
+            self.flags &= !(1 << FlagBit::SignMinus as u8);
         }
         self
     }
@@ -407,7 +410,7 @@ impl FormatterOptions {
     #[inline]
     #[must_use]
     pub const fn width(&self) -> Option<usize> {
-        if self.flags & (1 << FlagBit::WidthIsInitialized as u8) == 1 {
+        if (self.flags >> FlagBit::WidthIsInitialized as u8) & 1 == 1 {
             // Safety: `width` is initialized if the flag is set.
             Some(unsafe { self.width.assume_init() })
         } else {
@@ -420,7 +423,7 @@ impl FormatterOptions {
     #[inline]
     #[must_use]
     pub const fn precision(&self) -> Option<usize> {
-        if self.flags & (1 << FlagBit::PrecisionIsInitialized as u8) == 1 {
+        if (self.flags >> FlagBit::PrecisionIsInitialized as u8) & 1 == 1 {
             // Safety: `precision` is initialized if the flag is set.
             Some(unsafe { self.precision.assume_init() })
         } else {
@@ -432,28 +435,28 @@ impl FormatterOptions {
     #[inline]
     #[must_use]
     pub const fn sign_plus(&self) -> bool {
-        self.flags & (1 << FlagBit::SignPlus as u8) != 0
+        (self.flags >> FlagBit::SignPlus as u8) & 1 == 1
     }
 
     /// Determines if the `-` flag was specified.
     #[inline]
     #[must_use]
     pub const fn sign_minus(&self) -> bool {
-        self.flags & (1 << FlagBit::SignMinus as u8) != 0
+        (self.flags >> FlagBit::SignMinus as u8) & 1 == 1
     }
 
     /// Determines if the `#` flag was specified.
     #[inline]
     #[must_use]
     pub const fn alternate(&self) -> bool {
-        self.flags & (1 << FlagBit::Alternate as u8) != 0
+        (self.flags >> FlagBit::Alternate as u8) & 1 == 1
     }
 
     /// Determines if the `0` flag was specified.
     #[inline]
     #[must_use]
     pub const fn sign_aware_zero_pad(&self) -> bool {
-        self.flags & (1 << FlagBit::SignAwareZeroPad as u8) != 0
+        (self.flags >> FlagBit::SignAwareZeroPad as u8) & 1 == 1
     }
 }
 
@@ -490,23 +493,77 @@ impl From<&mut Formatter<'_>> for FormatterOptions {
 ///
 /// Generally speaking, a type should be able to be formatted using only its metadata, fields, and
 /// the formatter. Any other information should be stored in the metadata type.
-#[derive(Debug, Clone, Copy)]
-pub struct Metadata<'a, T> {
+pub struct Metadata<'a, T>
+where
+    T: SmartDisplay + ?Sized,
+{
     width: usize,
-    metadata: T,
-    _phantom: PhantomData<&'a T>,
+    metadata: T::Metadata,
+    _phantom: PhantomData<&'a T>, // variance
 }
 
-impl<T> Metadata<'_, T> {
+// manual impls for bounds
+impl<T> Debug for Metadata<'_, T>
+where
+    T: SmartDisplay,
+    T::Metadata: Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.debug_struct("Metadata")
+            .field("width", &self.width)
+            .field("metadata", &self.metadata)
+            .finish()
+    }
+}
+
+impl<T> Clone for Metadata<'_, T>
+where
+    T: SmartDisplay,
+    T::Metadata: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            width: self.width,
+            metadata: self.metadata.clone(),
+            _phantom: self._phantom,
+        }
+    }
+}
+
+impl<T> Copy for Metadata<'_, T>
+where
+    T: SmartDisplay,
+    T::Metadata: Copy,
+{
+}
+
+impl<'a, T> Metadata<'a, T>
+where
+    T: SmartDisplay + ?Sized,
+{
     /// Creates a new `Metadata` with the given width and metadata. While the width _should_ be
     /// exact, this is not a requirement for soundness.
     ///
     /// **Note**: The width is for the value itself. It does _not_ include any padding that may be
     /// added by the formatter.
-    pub const fn new(width: usize, metadata: T) -> Self {
+    pub const fn new(width: usize, _value: &T, metadata: T::Metadata) -> Self {
         Self {
             width,
             metadata,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Change the type that the metadata is for. This is useful when implementing [`SmartDisplay`]
+    /// for a type that wraps another type. Both type's metadata type must be the same.
+    pub fn borrow<'b, U>(self) -> Metadata<'b, U>
+    where
+        'a: 'b,
+        U: SmartDisplay<Metadata = T::Metadata> + ?Sized,
+    {
+        Metadata {
+            width: self.width,
+            metadata: self.metadata,
             _phantom: PhantomData,
         }
     }
@@ -518,10 +575,18 @@ impl<T> Metadata<'_, T> {
     pub const fn width(&self) -> usize {
         self.width
     }
+
+    /// Obtain the width of the value after padding.
+    pub fn padded_width(&self, f: FormatterOptions) -> usize {
+        match f.width() {
+            Some(requested_width) => cmp::max(self.width(), requested_width),
+            None => self.width(),
+        }
+    }
 }
 
-impl Metadata<'_, ()> {
-    /// Obtain the width of the value, given the formatter options.
+impl Metadata<'_, Infallible> {
+    /// Obtain the width of the value before padding, given the formatter options.
     pub fn width_of<T>(value: T, f: FormatterOptions) -> usize
     where
         T: SmartDisplay,
@@ -537,13 +602,24 @@ impl Metadata<'_, ()> {
     {
         items.width(f)
     }
+
+    /// Obtain the width of the value after padding, given the formatter options.
+    pub fn padded_width_of<T>(value: T, f: FormatterOptions) -> usize
+    where
+        T: SmartDisplay,
+    {
+        value.metadata(f).padded_width(f)
+    }
 }
 
 /// Permit using `Metadata` as a smart pointer to the user-provided metadata.
-impl<T> Deref for Metadata<'_, T> {
-    type Target = T;
+impl<T> Deref for Metadata<'_, T>
+where
+    T: SmartDisplay + ?Sized,
+{
+    type Target = T::Metadata;
 
-    fn deref(&self) -> &T {
+    fn deref(&self) -> &T::Metadata {
         &self.metadata
     }
 }
@@ -663,18 +739,14 @@ pub trait SmartDisplay: Display {
     /// assert_eq!(metadata.width(), 13);
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self::Metadata>;
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self>;
 
     /// Format the value using the given formatter and metadata. The formatted output should have
     /// the width indicated by the metadata. This is before any padding is added by the
     /// formatter.
     ///
     /// If the metadata is not needed, you should implement the `fmt` method instead.
-    fn fmt_with_metadata(
-        &self,
-        f: &mut Formatter<'_>,
-        _metadata: &Metadata<'_, Self::Metadata>,
-    ) -> Result {
+    fn fmt_with_metadata(&self, f: &mut Formatter<'_>, _metadata: &Metadata<'_, Self>) -> Result {
         SmartDisplay::fmt(self, f)
     }
 

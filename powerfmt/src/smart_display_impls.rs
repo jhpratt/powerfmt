@@ -23,7 +23,7 @@ impl SmartDisplay for Infallible {
     type Metadata = Self;
 
     #[inline]
-    fn metadata(&self, _: FormatterOptions) -> Metadata<Self> {
+    fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self> {
         match *self {}
     }
 
@@ -37,8 +37,8 @@ impl SmartDisplay for bool {
     type Metadata = ();
 
     #[inline]
-    fn metadata(&self, _: FormatterOptions) -> Metadata<()> {
-        Metadata::new(if *self { 4 } else { 5 }, ())
+    fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self> {
+        Metadata::new(if *self { 4 } else { 5 }, self, ())
     }
 
     #[inline]
@@ -51,12 +51,13 @@ impl SmartDisplay for str {
     type Metadata = ();
 
     #[inline]
-    fn metadata(&self, f: FormatterOptions) -> Metadata<()> {
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
         Metadata::new(
             match f.precision() {
                 Some(max_len) => min(self.len(), max_len),
                 None => self.len(),
             },
+            self,
             (),
         )
     }
@@ -72,8 +73,8 @@ impl SmartDisplay for String {
     type Metadata = ();
 
     #[inline]
-    fn metadata(&self, f: FormatterOptions) -> Metadata<()> {
-        (**self).metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        (**self).metadata(f).borrow()
     }
 
     #[inline]
@@ -90,10 +91,10 @@ where
 {
     type Metadata = B::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self::Metadata> {
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
         match *self {
-            Cow::Borrowed(ref b) => b.metadata(f),
-            Cow::Owned(ref o) => o.metadata(f),
+            Cow::Borrowed(ref b) => b.metadata(f).borrow(),
+            Cow::Owned(ref o) => o.metadata(f).borrow(),
         }
     }
 
@@ -108,8 +109,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        self.get_ref().metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        self.get_ref().metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -123,8 +124,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        (**self).metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        (**self).metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -138,8 +139,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        (**self).metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        (**self).metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -153,8 +154,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        (**self).metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        (**self).metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -168,8 +169,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        (**self).metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        (**self).metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -183,8 +184,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        self.0.metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        self.0.metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -199,8 +200,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        (**self).metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        (**self).metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -215,8 +216,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        (**self).metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        (**self).metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -231,8 +232,8 @@ where
 {
     type Metadata = T::Metadata;
 
-    fn metadata(&self, f: FormatterOptions) -> Metadata<Self::Metadata> {
-        (**self).metadata(f)
+    fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+        (**self).metadata(f).borrow()
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -246,9 +247,12 @@ macro_rules! impl_uint {
         impl SmartDisplay for $t {
             type Metadata = ();
 
-            fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self::Metadata> {
-                let width = self.checked_ilog10().map_or(1, |n| n as usize + 1);
-                Metadata::new(width, ())
+            fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+                let mut width = self.checked_ilog10().map_or(1, |n| n as usize + 1);
+                if f.sign_plus() || f.sign_minus() {
+                    width += 1;
+                }
+                Metadata::new(width, self, ())
             }
 
             #[inline]
@@ -267,10 +271,10 @@ macro_rules! impl_int {
         impl SmartDisplay for $t {
             type Metadata = ();
 
-            fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self::Metadata> {
-                let mut width = if *self < 0 { 1 } else { 0 };
+            fn metadata(&self, f: FormatterOptions) -> Metadata<'_, Self> {
+                let mut width = if f.sign_plus() || *self < 0 { 1 } else { 0 };
                 width += self.unsigned_abs().checked_ilog10().map_or(1, |n| n as usize + 1);
-                Metadata::new(width, ())
+                Metadata::new(width, self, ())
             }
 
             #[inline]

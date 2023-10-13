@@ -120,8 +120,8 @@ impl<const SIZE: usize> fmt::Display for WriteBuffer<SIZE> {
 impl<const SIZE: usize> SmartDisplay for WriteBuffer<SIZE> {
     type Metadata = ();
 
-    fn metadata(&self, _: FormatterOptions) -> Metadata<()> {
-        Metadata::new(self.len, ())
+    fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self> {
+        Metadata::new(self.len, self, ())
     }
 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
