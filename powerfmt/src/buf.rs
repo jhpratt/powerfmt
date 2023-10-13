@@ -27,7 +27,6 @@ impl<const SIZE: usize> WriteBuffer<SIZE> {
     /// Creates an empty buffer.
     pub const fn new() -> Self {
         Self {
-            // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
             buf: maybe_uninit_uninit_array::<_, SIZE>(),
             len: 0,
         }
@@ -35,12 +34,7 @@ impl<const SIZE: usize> WriteBuffer<SIZE> {
 
     /// Obtain the contents of the buffer as a string.
     pub fn as_str(&self) -> &str {
-        // SAFETY: `buf` is only written to by the `fmt::Write::write_str` implementation
-        // which writes a valid UTF-8 string to `buf` and correctly sets `len`.
-        unsafe {
-            let s = maybe_uninit_slice_assume_init_ref(&self.buf[..self.len]);
-            str::from_utf8_unchecked(s)
-        }
+        self
     }
 
     /// Determine how many bytes are remaining in the buffer.
@@ -87,19 +81,19 @@ impl<const SIZE: usize> Hash for WriteBuffer<SIZE> {
 
 impl<const SIZE: usize> AsRef<str> for WriteBuffer<SIZE> {
     fn as_ref(&self) -> &str {
-        self.as_str()
+        self
     }
 }
 
 impl<const SIZE: usize> AsRef<[u8]> for WriteBuffer<SIZE> {
     fn as_ref(&self) -> &[u8] {
-        self.as_str().as_bytes()
+        self.as_bytes()
     }
 }
 
 impl<const SIZE: usize> core::borrow::Borrow<str> for WriteBuffer<SIZE> {
     fn borrow(&self) -> &str {
-        self.as_str()
+        self
     }
 }
 
@@ -107,13 +101,18 @@ impl<const SIZE: usize> core::ops::Deref for WriteBuffer<SIZE> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        self.as_str()
+        // SAFETY: `buf` is only written to by the `fmt::Write::write_str` implementation which
+        // writes a valid UTF-8 string to `buf` and correctly sets `len`.
+        unsafe {
+            let s = maybe_uninit_slice_assume_init_ref(&self.buf[..self.len]);
+            str::from_utf8_unchecked(s)
+        }
     }
 }
 
 impl<const SIZE: usize> fmt::Display for WriteBuffer<SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
+        f.write_str(self)
     }
 }
 
@@ -125,7 +124,7 @@ impl<const SIZE: usize> SmartDisplay for WriteBuffer<SIZE> {
     }
 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad(self.as_str())
+        f.pad(self)
     }
 }
 
