@@ -497,7 +497,7 @@ pub struct Metadata<'a, T>
 where
     T: SmartDisplay + ?Sized,
 {
-    width: usize,
+    unpadded_width: usize,
     metadata: T::Metadata,
     _phantom: PhantomData<&'a T>, // variance
 }
@@ -510,7 +510,7 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.debug_struct("Metadata")
-            .field("width", &self.width)
+            .field("unpadded_width", &self.unpadded_width)
             .field("metadata", &self.metadata)
             .finish()
     }
@@ -523,7 +523,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            width: self.width,
+            unpadded_width: self.unpadded_width,
             metadata: self.metadata.clone(),
             _phantom: self._phantom,
         }
@@ -543,12 +543,9 @@ where
 {
     /// Creates a new `Metadata` with the given width and metadata. While the width _should_ be
     /// exact, this is not a requirement for soundness.
-    ///
-    /// **Note**: The width is for the value itself. It does _not_ include any padding that may be
-    /// added by the formatter.
-    pub const fn new(width: usize, _value: &T, metadata: T::Metadata) -> Self {
+    pub const fn new(unpadded_width: usize, _value: &T, metadata: T::Metadata) -> Self {
         Self {
-            width,
+            unpadded_width,
             metadata,
             _phantom: PhantomData,
         }
@@ -562,36 +559,33 @@ where
         U: SmartDisplay<Metadata = T::Metadata> + ?Sized,
     {
         Metadata {
-            width: self.width,
+            unpadded_width: self.unpadded_width,
             metadata: self.metadata,
             _phantom: PhantomData,
         }
     }
 
-    /// Obtain the width of the value.
-    ///
-    /// **Note**: The width is for the value itself. It does _not_ include any padding that may be
-    /// added by the formatter.
-    pub const fn width(&self) -> usize {
-        self.width
+    /// Obtain the width of the value before padding.
+    pub const fn unpadded_width(&self) -> usize {
+        self.unpadded_width
     }
 
     /// Obtain the width of the value after padding.
     pub fn padded_width(&self, f: FormatterOptions) -> usize {
         match f.width() {
-            Some(requested_width) => cmp::max(self.width(), requested_width),
-            None => self.width(),
+            Some(requested_width) => cmp::max(self.unpadded_width(), requested_width),
+            None => self.unpadded_width(),
         }
     }
 }
 
 impl Metadata<'_, Infallible> {
     /// Obtain the width of the value before padding, given the formatter options.
-    pub fn width_of<T>(value: T, f: FormatterOptions) -> usize
+    pub fn unpadded_width_of<T>(value: T, f: FormatterOptions) -> usize
     where
         T: SmartDisplay,
     {
-        value.metadata(f).width
+        value.metadata(f).unpadded_width
     }
 
     /// Obtain the width of the value after padding, given the formatter options.
