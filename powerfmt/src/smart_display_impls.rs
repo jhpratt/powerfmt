@@ -286,3 +286,18 @@ macro_rules! impl_int {
 }
 
 impl_int![i8 i16 i32 i64 i128 isize];
+
+impl SmartDisplay for char {
+    type Metadata = ();
+
+    fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self> {
+        let mut buf = [0; 4];
+        let c = self.encode_utf8(&mut buf);
+
+        Metadata::new(c.len(), self, ())
+    }
+
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(self, f)
+    }
+}
