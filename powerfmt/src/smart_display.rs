@@ -594,15 +594,6 @@ impl Metadata<'_, Infallible> {
         value.metadata(f).width
     }
 
-    /// Obtain the combined width of the values, using the provided formatter options for all
-    /// values.
-    pub fn width_of_many<Tuple>(items: Tuple, f: FormatterOptions) -> usize
-    where
-        Tuple: ManySmartDisplay,
-    {
-        items.width(f)
-    }
-
     /// Obtain the width of the value after padding, given the formatter options.
     pub fn padded_width_of<T>(value: T, f: FormatterOptions) -> usize
     where
@@ -621,61 +612,6 @@ where
 
     fn deref(&self) -> &T::Metadata {
         &self.metadata
-    }
-}
-
-mod sealed {
-    pub trait Sealed {}
-}
-
-/// Tuples and arrays where every item implements [`SmartDisplay`].
-///
-/// `ManySmartDisplay` is implemented for tuples of up to 12 items and arrays of any size.
-///
-/// This is currently only used for [`Metadata::width_of_many`].
-pub trait ManySmartDisplay: sealed::Sealed {
-    /// Compute the combined width of all items.
-    fn width(self, f: FormatterOptions) -> usize;
-}
-
-/// Implement `SmartDisplayTuple` for various tuple types.
-macro_rules! impl_for_tuple {
-    ($($($t:ident),*;)*) => {$(
-        impl<$($t),*> sealed::Sealed for ($($t,)*) {}
-        impl<$($t),*> ManySmartDisplay for ($($t,)*)
-        where
-            $($t: SmartDisplay),*
-        {
-            #[allow(non_snake_case, unused_variables)]
-            #[inline]
-            fn width(self, f: FormatterOptions) -> usize {
-                let ($($t,)*) = self;
-                 0 $(+ Metadata::width_of($t, f))*
-            }
-        }
-    )*};
-}
-
-impl_for_tuple! {
-    ;
-    A;
-    A, B;
-    A, B, C;
-    A, B, C, D;
-    A, B, C, D, E;
-    A, B, C, D, E, F;
-    A, B, C, D, E, F, G;
-    A, B, C, D, E, F, G, H;
-    A, B, C, D, E, F, G, H, I;
-    A, B, C, D, E, F, G, H, I, J;
-    A, B, C, D, E, F, G, H, I, J, K;
-    A, B, C, D, E, F, G, H, I, J, K, L;
-}
-
-impl<T, const N: usize> sealed::Sealed for [T; N] {}
-impl<T: SmartDisplay, const N: usize> ManySmartDisplay for [T; N] {
-    fn width(self, f: FormatterOptions) -> usize {
-        self.iter().map(|x| Metadata::width_of(x, f)).sum()
     }
 }
 
@@ -722,8 +658,8 @@ pub trait SmartDisplay: Display {
     /// impl SmartDisplay for WrappedBuffer {
     ///     type Metadata = ();
     ///
-    ///     fn metadata(&self, _: FormatterOptions) -> Metadata<'_, ()> {
-    ///         Metadata::new(self.0.len(), ())
+    ///     fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self> {
+    ///         Metadata::new(self.0.len(), self, ())
     ///     }
     ///
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
