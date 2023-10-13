@@ -499,7 +499,7 @@ where
 {
     unpadded_width: usize,
     metadata: T::Metadata,
-    _phantom: PhantomData<&'a T>, // variance
+    _value: PhantomData<&'a T>, // variance
 }
 
 // manual impls for bounds
@@ -525,7 +525,7 @@ where
         Self {
             unpadded_width: self.unpadded_width,
             metadata: self.metadata.clone(),
-            _phantom: self._phantom,
+            _value: self._value,
         }
     }
 }
@@ -547,7 +547,7 @@ where
         Self {
             unpadded_width,
             metadata,
-            _phantom: PhantomData,
+            _value: PhantomData,
         }
     }
 
@@ -561,7 +561,7 @@ where
         Metadata {
             unpadded_width: self.unpadded_width,
             metadata: self.metadata,
-            _phantom: PhantomData,
+            _value: PhantomData,
         }
     }
 
