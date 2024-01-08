@@ -1,4 +1,4 @@
-name: "Create release"
+name: "Feature powerset & release"
 
 env:
   RUSTFLAGS: -Dwarnings
@@ -12,8 +12,6 @@ defaults:
     shell: bash
 
 on:
-  schedule:
-    - cron: "0 0 * * 1" # midnight on Monday
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
