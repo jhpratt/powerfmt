@@ -20,10 +20,10 @@ includes, at the time of writing,
 
 ## Reporting a vulnerability
 
-Security vulnerabilities are taken seriously. If you discover a security vulnerability in `time`,
-please report it by email using the email address on [the maintainer's GitHub profile][gh-profile].
-Please do not disclose the vulnerability publicly until an opportunity has been given to investigate
-and release a patch.
+Security vulnerabilities are taken seriously. If you discover a security vulnerability, please
+report it by email using the email address on [the maintainer's GitHub profile][gh-profile]. Please
+do not disclose the vulnerability publicly until an opportunity has been given to investigate and
+release a patch.
 
 [gh-profile]: https://github.com/jhpratt
 
