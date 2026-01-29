@@ -626,7 +626,7 @@ where
 /// recommended to implement only `fmt_with_metadata`. `fmt` should be implemented if and only if
 /// the type does not require any of the calculated metadata. In that situation, `fmt_with_metadata`
 /// should be omitted.
-#[cfg_attr(__powerfmt_docs, rustc_must_implement_one_of(fmt, fmt_with_metadata))]
+#[cfg_attr(docsrs, rustc_must_implement_one_of(fmt, fmt_with_metadata))]
 pub trait SmartDisplay: Display {
     /// User-provided metadata type.
     type Metadata;
