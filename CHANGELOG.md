@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog]. This project adheres to [Semantic Ver
 
 ---
 
+## 0.2.1 [2026-10-05]
+
+### Fixed
+
+- `alternate()` in the macro now calls the correct method.
+- Diagnostic messages had minor incorrectness fixed.
+
+### Updated
+
+- Depend on `syn` version 3 instead of version 2.
+
 ## 0.2.0 [2023-10-13]
 
 ### Added
