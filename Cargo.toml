@@ -5,7 +5,7 @@ resolver = "2"
 
 [workspace.dependencies]
 powerfmt-macros = { version = "=0.1.0", path = "powerfmt-macros" }
-syn = { version = "2.0.37", features = ["full"] }
+syn = { version = "3.0.6", features = ["full"] }
 quote = "1.0.33"
 proc-macro2 = "1.0.67"
 

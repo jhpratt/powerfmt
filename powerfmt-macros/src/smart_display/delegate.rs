@@ -24,7 +24,7 @@ pub(crate) fn implementation(attr: TokenStream, item: TokenStream) -> Result<Tok
     // The compiler doesn't provide access to anything more than a token stream, so matching on the
     // path is the best we can do.
     match &input.trait_ {
-        Some((None, trait_path, _))
+        Some((trait_path, _))
             if trait_path
                 .segments
                 .last()
