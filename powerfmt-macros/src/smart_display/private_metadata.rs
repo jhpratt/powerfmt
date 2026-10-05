@@ -16,7 +16,7 @@ pub(crate) fn implementation(attr: TokenStream, item: TokenStream) -> Result<Tok
     if !attr.is_empty() {
         return Err(Error::new_spanned(
             attr,
-            "`delegate_display` does not take any arguments",
+            "`private_metadata` does not take any arguments",
         ));
     }
 
@@ -26,7 +26,7 @@ pub(crate) fn implementation(attr: TokenStream, item: TokenStream) -> Result<Tok
     if matches!(input.vis, Visibility::Public(_)) {
         return Err(Error::new_spanned(
             input.vis.into_token_stream(),
-            "`metadata` can only be used on non-pubic items",
+            "`metadata` can only be used on non-public items",
         ));
     }
 
