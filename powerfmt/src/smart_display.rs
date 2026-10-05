@@ -186,7 +186,7 @@ macro_rules! __not_public_at_root__padded_width_of {
     };
     (@options_inner [alternate($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
         $crate::smart_display::padded_width_of!(@options_inner [$($remaining)*] [
-            $($expansion)*.with_width($e)
+            $($expansion)*.with_alternate($e)
         ])
     };
     (@options_inner [sign_aware_zero_pad($e:expr) $($remaining:tt)*] [$($expansion:tt)*]) => {
