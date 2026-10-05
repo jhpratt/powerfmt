@@ -2,7 +2,7 @@
 
 use core::hash::{Hash, Hasher};
 use core::mem::MaybeUninit;
-use core::{fmt, str};
+use core::{fmt, slice, str};
 
 use crate::smart_display::{FormatterOptions, Metadata, SmartDisplay};
 
@@ -29,7 +29,7 @@ impl<const SIZE: usize> WriteBuffer<SIZE> {
     #[inline]
     pub const fn new() -> Self {
         Self {
-            buf: maybe_uninit_uninit_array::<_, SIZE>(),
+            buf: [MaybeUninit::uninit(); SIZE],
             len: 0,
         }
     }
@@ -114,11 +114,14 @@ impl<const SIZE: usize> core::ops::Deref for WriteBuffer<SIZE> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        // SAFETY: `buf` is only written to by the `fmt::Write::write_str` implementation which
-        // writes a valid UTF-8 string to `buf` and correctly sets `len`.
+        // Safety: `MaybeUninit<T>` and `T` have the same layout. `buf` is only written to by the
+        // `fmt::Write::write_str` implementation which writes a valid UTF-8 string to `buf`
+        // and correctly sets `len`. All other safety requirements are upheld
+        // by the original slice.
         unsafe {
-            let s = maybe_uninit_slice_assume_init_ref(&self.buf[..self.len]);
-            str::from_utf8_unchecked(s)
+            let slice = self.buf.get_unchecked(..self.len);
+            let slice = slice::from_raw_parts(slice.as_ptr().cast(), slice.len());
+            str::from_utf8_unchecked(slice)
         }
     }
 }
@@ -159,57 +162,19 @@ impl<const SIZE: usize> fmt::Write for WriteBuffer<SIZE> {
     }
 }
 
-/// Equivalent of [`MaybeUninit::uninit_array`] that compiles on stable.
-#[must_use]
-#[inline(always)]
-const fn maybe_uninit_uninit_array<T, const N: usize>() -> [MaybeUninit<T>; N] {
-    // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
-    unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() }
-}
-
 /// Equivalent of [`MaybeUninit::write_slice`] that compiles on stable.
 fn maybe_uninit_write_slice<'a, T>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
 where
     T: Copy,
 {
     #[allow(trivial_casts)]
-    // SAFETY: T and MaybeUninit<T> have the same layout
+    // Safety: `T` and `MaybeUninit<T>` have the same layout
     let uninit_src = unsafe { &*(src as *const [T] as *const [MaybeUninit<T>]) };
 
     this.copy_from_slice(uninit_src);
 
-    // SAFETY: Valid elements have just been copied into `this` so it is initialized
-    unsafe { maybe_uninit_slice_assume_init_mut(this) }
-}
-
-/// Equivalent of [`MaybeUninit::slice_assume_init_mut`] that compiles on stable.
-///
-/// # Safety
-///
-/// See [`MaybeUninit::slice_assume_init_mut`](https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.slice_assume_init_mut).
-#[inline(always)]
-unsafe fn maybe_uninit_slice_assume_init_mut<T, U>(slice: &mut [MaybeUninit<T>]) -> &mut [U] {
-    #[allow(trivial_casts)]
-    // SAFETY: similar to safety notes for `slice_get_ref`, but we have a mutable reference which is
-    // also guaranteed to be valid for writes.
-    unsafe {
-        &mut *(slice as *mut [MaybeUninit<T>] as *mut [U])
-    }
-}
-
-/// Equivalent of [`MaybeUninit::slice_assume_init_ref`] that compiles on stable.
-///
-/// # Safety
-///
-/// See [`MaybeUninit::slice_assume_init_ref`](https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.slice_assume_init_ref).
-#[inline(always)]
-const unsafe fn maybe_uninit_slice_assume_init_ref<T>(slice: &[MaybeUninit<T>]) -> &[T] {
-    #[allow(trivial_casts)]
-    // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that `slice` is
-    // initialized, and `MaybeUninit` is guaranteed to have the same layout as `T`. The pointer
-    // obtained is valid since it refers to memory owned by `slice` which is a reference and thus
-    // guaranteed to be valid for reads.
-    unsafe {
-        &*(slice as *const [MaybeUninit<T>] as *const [T])
-    }
+    // Safety: `MaybeUninit<T>` and `T` have the same layout. Valid elements have just been copied
+    // into `this` so it is initialized. All other safety requirements are upheld by the
+    // original slice.
+    unsafe { slice::from_raw_parts_mut(this.as_mut_ptr().cast(), this.len()) }
 }
