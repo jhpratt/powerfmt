@@ -15,6 +15,7 @@ pub struct WriteBuffer<const SIZE: usize> {
 }
 
 impl<const SIZE: usize> fmt::Debug for WriteBuffer<SIZE> {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DisplayBuffer")
             .field("buf", &self.as_str())
@@ -25,6 +26,7 @@ impl<const SIZE: usize> fmt::Debug for WriteBuffer<SIZE> {
 
 impl<const SIZE: usize> WriteBuffer<SIZE> {
     /// Creates an empty buffer.
+    #[inline]
     pub const fn new() -> Self {
         Self {
             buf: maybe_uninit_uninit_array::<_, SIZE>(),
@@ -33,17 +35,20 @@ impl<const SIZE: usize> WriteBuffer<SIZE> {
     }
 
     /// Obtain the contents of the buffer as a string.
+    #[inline]
     pub fn as_str(&self) -> &str {
         self
     }
 
     /// Determine how many bytes are remaining in the buffer.
+    #[inline]
     pub const fn remaining_capacity(&self) -> usize {
         SIZE - self.len
     }
 }
 
 impl<const SIZE: usize> Default for WriteBuffer<SIZE> {
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -52,6 +57,7 @@ impl<const SIZE: usize> Default for WriteBuffer<SIZE> {
 impl<const LEFT_SIZE: usize, const RIGHT_SIZE: usize> PartialOrd<WriteBuffer<RIGHT_SIZE>>
     for WriteBuffer<LEFT_SIZE>
 {
+    #[inline]
     fn partial_cmp(&self, other: &WriteBuffer<RIGHT_SIZE>) -> Option<core::cmp::Ordering> {
         self.as_str().partial_cmp(other.as_str())
     }
@@ -60,6 +66,7 @@ impl<const LEFT_SIZE: usize, const RIGHT_SIZE: usize> PartialOrd<WriteBuffer<RIG
 impl<const LEFT_SIZE: usize, const RIGHT_SIZE: usize> PartialEq<WriteBuffer<RIGHT_SIZE>>
     for WriteBuffer<LEFT_SIZE>
 {
+    #[inline]
     fn eq(&self, other: &WriteBuffer<RIGHT_SIZE>) -> bool {
         self.as_str() == other.as_str()
     }
@@ -68,30 +75,35 @@ impl<const LEFT_SIZE: usize, const RIGHT_SIZE: usize> PartialEq<WriteBuffer<RIGH
 impl<const SIZE: usize> Eq for WriteBuffer<SIZE> {}
 
 impl<const SIZE: usize> Ord for WriteBuffer<SIZE> {
+    #[inline]
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.as_str().cmp(other.as_str())
     }
 }
 
 impl<const SIZE: usize> Hash for WriteBuffer<SIZE> {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_str().hash(state)
     }
 }
 
 impl<const SIZE: usize> AsRef<str> for WriteBuffer<SIZE> {
+    #[inline]
     fn as_ref(&self) -> &str {
         self
     }
 }
 
 impl<const SIZE: usize> AsRef<[u8]> for WriteBuffer<SIZE> {
+    #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
 impl<const SIZE: usize> core::borrow::Borrow<str> for WriteBuffer<SIZE> {
+    #[inline]
     fn borrow(&self) -> &str {
         self
     }
@@ -100,6 +112,7 @@ impl<const SIZE: usize> core::borrow::Borrow<str> for WriteBuffer<SIZE> {
 impl<const SIZE: usize> core::ops::Deref for WriteBuffer<SIZE> {
     type Target = str;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         // SAFETY: `buf` is only written to by the `fmt::Write::write_str` implementation which
         // writes a valid UTF-8 string to `buf` and correctly sets `len`.
@@ -111,6 +124,7 @@ impl<const SIZE: usize> core::ops::Deref for WriteBuffer<SIZE> {
 }
 
 impl<const SIZE: usize> fmt::Display for WriteBuffer<SIZE> {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self)
     }
@@ -119,16 +133,19 @@ impl<const SIZE: usize> fmt::Display for WriteBuffer<SIZE> {
 impl<const SIZE: usize> SmartDisplay for WriteBuffer<SIZE> {
     type Metadata = ();
 
+    #[inline]
     fn metadata(&self, _: FormatterOptions) -> Metadata<'_, Self> {
         Metadata::new(self.len, self, ())
     }
 
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad(self)
     }
 }
 
 impl<const SIZE: usize> fmt::Write for WriteBuffer<SIZE> {
+    #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let bytes = s.as_bytes();
 
